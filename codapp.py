@@ -82,16 +82,65 @@ def initiate_cod(article_text):
 # Streamlit code
 st.title('CoD Initiator')
 
+# Add info text
+st.markdown("""
+<span style="color:#045dd5">**What is CoD (Chain of Density)?**</span><br>
+CoD is a specialized approach for generating text summaries. It starts with an initial summary that is sparse in terms of specific entities and information. Over iterative steps, the summary is enriched with missing salient entities to make it more informative and detailed, all without increasing its length.
+
+<span style="color:#045dd5">**When Can CoD Be Used?**</span><br>
+CoD is versatile and can be applied to any text requiring summarization, such as news articles, research papers, or long-form content. It's especially useful when you want a summary that is both comprehensive and concise.
+
+<span style="color:#045dd5">**What Can You Expect?**</span><br>
+Summaries generated using the CoD approach are more abstractive, exhibit greater fusion of information, and are less biased towards the lead information in the original text.
+""", unsafe_allow_html=True)
+
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
-if uploaded_file is not None:
-    if st.button('Initiate the CoD'):
-        article_text = read_pdf(uploaded_file.read())
-        result = initiate_cod(article_text)
-        # Parse the result as JSON
+
+if st.button('Initiate the CoD'):
+    # Create a progress bar
+    progress_bar = st.progress(0)
+
+    # Update the progress bar to indicate that the process has started
+    progress_bar.progress(10)
+
+    article_text = read_pdf(uploaded_file.read())
+    result = initiate_cod(article_text)
+
+    # Update the progress bar to indicate that the process is halfway done
+    progress_bar.progress(50)
+
+    # Add the following code snippet where you display the summaries
+    try:
         result_json = json.loads(result)
+        # Initialize human preference percentages based on the summary step (i+1)
+        human_pref = {1: 8.3, 2: 30.8, 3: 23.0, 4: 22.5, 5: 15.5}
+
         # Iterate over the result and display each item in a formatted way
         for i, item in enumerate(result_json):
-            st.markdown(f"**Summary {i+1}**")
+            human_pref_percentage = human_pref[i+1]  # Retrieve the percentage for the current step
+            color = "yellow"  # Initialize to yellow
+
+            # Assign color based on the human preference percentage
+            if human_pref_percentage == max(human_pref.values()):
+                color = "green"
+            elif human_pref_percentage == min(human_pref.values()):
+                color = "red"
+
+            st.markdown(f"<span style='color:{color}'>**Summary {i+1}**</span>", unsafe_allow_html=True)
+            st.markdown(f"<span style='color:{color}'>This result will most likely be preferred by {human_pref_percentage}% of humans</span>", unsafe_allow_html=True)
             st.markdown(f"**Missing Entities:** {item['Missing_Entities']}")
             st.markdown(f"**Denser Summary:** {item['Denser_Summary']}")
             st.markdown("---")
+
+        # Display the raw JSON at the end with an explanation
+        st.markdown("### Raw JSON Output")
+        st.markdown("The following JSON contains all the details of the CoD operation. It's useful for developers or anyone interested in the raw data.")
+        st.code(result, language='json')
+
+        # Update the progress bar to indicate that the process is done
+        progress_bar.progress(100)
+
+    except json.JSONDecodeError:
+        st.error("Failed to decode the result as JSON.")
+
+
